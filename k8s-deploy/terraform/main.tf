@@ -1,28 +1,19 @@
-# ---------- random suffix for globally-unique project ID ----------
-
-resource "random_id" "project_suffix" {
-  byte_length = 3
-}
-
-# ---------- GCP project ----------
-
-resource "google_project" "this" {
-  name            = var.project_name
-  project_id      = "${var.app_name}-${random_id.project_suffix.hex}"
-  billing_account = var.billing_account
+variable "project_id" {
+  description = "The ID of the existing GCP project"
+  type        = string
 }
 
 # ---------- enable required APIs ----------
 
 resource "google_project_service" "container" {
-  project = google_project.this.project_id
+  project = var.project_id
   service = "container.googleapis.com"
 
   disable_on_destroy = false
 }
 
 resource "google_project_service" "artifact_registry" {
-  project = google_project.this.project_id
+  project = var.project_id
   service = "artifactregistry.googleapis.com"
 
   disable_on_destroy = false
@@ -31,7 +22,7 @@ resource "google_project_service" "artifact_registry" {
 # ---------- Artifact Registry ----------
 
 resource "google_artifact_registry_repository" "docker" {
-  project       = google_project.this.project_id
+  project       = var.project_id
   location      = var.region
   repository_id = var.app_name
   format        = "DOCKER"
@@ -40,14 +31,14 @@ resource "google_artifact_registry_repository" "docker" {
 }
 
 locals {
-  registry_url = "${var.region}-docker.pkg.dev/${google_project.this.project_id}/${google_artifact_registry_repository.docker.repository_id}"
+  registry_url = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker.repository_id}"
   image        = "${local.registry_url}/${var.app_name}:${var.image_tag}"
 }
 
 # ---------- GKE Autopilot cluster ----------
 
 resource "google_container_cluster" "this" {
-  project  = google_project.this.project_id
+  project  = var.project_id
   name     = "${var.app_name}-cluster"
   location = var.region
 
@@ -58,7 +49,7 @@ resource "google_container_cluster" "this" {
   depends_on = [google_project_service.container]
 }
 
-# ---------- Kubernetes Deployment ----------
+/*# ---------- Kubernetes Deployment ----------
 
 resource "kubernetes_deployment" "app" {
   metadata {
@@ -150,4 +141,4 @@ resource "kubernetes_service" "app" {
   }
 
   depends_on = [kubernetes_deployment.app]
-}
+}*/

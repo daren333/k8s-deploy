@@ -17,7 +17,7 @@ variable "region" {
 variable "app_name" {
   description = "Name prefix used for GKE cluster, Artifact Registry, and K8s resources"
   type        = string
-  default     = "yolo-detector"
+  default     = "yolo-repo"
 }
 
 variable "replicas" {
