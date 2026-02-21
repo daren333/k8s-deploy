@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yolo-fastapi-deployment
+  labels:
+    app: yolo-fastapi
+spec:
+  selector:
+    matchLabels:
+      app: yolo-fastapi
+  template:
+    metadata:
+      labels:
+        app: yolo-fastapi
+    spec:
+      containers:
+      - name: yolo-fastapi-container
+        # We will replace this with your actual Google Cloud artifact registry path later
+        image: gcr.io/YOUR_PROJECT_ID/yolo-fastapi:v1 
+        ports:
+        - containerPort: 8000 # Matches the port exposed in your Dockerfile
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: yolo-fastapi-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: yolo-fastapi-deployment
+  minReplicas: 1
+  maxReplicas: 5 # Maximum number of pods it will scale up to under heavy load
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70 # Scales up when average CPU hits 70%
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yolo-fastapi-service
+spec:
+  type: ClusterIP # Changed from LoadBalancer. The Ingress will now handle external access.
+  selector:
+    app: yolo-fastapi
+  ports:
+    - protocol: TCP
+      port: 80 # The port the Ingress will route to
+      targetPort: 8000 # The container port
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yolo-fastapi-ingress
+  annotations:
+    # If using cert-manager (Let's Encrypt), you would uncomment this:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # If using GKE Managed Certificates, you would uncomment this:
+    networking.gke.io/managed-certificates: "yolo-managed-cert"
+    
+    # Force redirect from HTTP to HTTPS (standard for NGINX ingress)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - yolo-api.yourdomain.com # Replace with your actual domain
+    secretName: yolo-fastapi-tls # The K8s secret where your certificate will be stored
+  rules:
+  - host: yolo-api.yourdomain.com # Replace with your actual domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: yolo-fastapi-service
+            port:
+              number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: yolo-managed-cert
+spec:
+  domains:
+    - yolo-api.yourdomain.com
