@@ -1,6 +1,6 @@
 output "project_id" {
   description = "GCP project ID"
-  value       = google_project.this.project_id
+  value       = var.project_id # Point to your variable instead of the deleted resource
 }
 
 output "cluster_name" {
@@ -10,10 +10,9 @@ output "cluster_name" {
 
 output "artifact_registry_url" {
   description = "Docker image registry URL (push target)"
-  value       = local.registry_url
+  # Ensure this uses var.project_id as well
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}"
 }
 
-output "load_balancer_ip" {
-  description = "External IP of the LoadBalancer service"
-  value       = kubernetes_service.app.status[0].load_balancer[0].ingress[0].ip
-}
+# The load_balancer_ip output has been removed because 
+# the service is not managed by Terraform right now.
