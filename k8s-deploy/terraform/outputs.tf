@@ -1,18 +1,19 @@
 output "project_id" {
-  description = "GCP project ID"
-  value       = var.project_id # Point to your variable instead of the deleted resource
+  value       = google_project.yolo_project.project_id
+  description = "The unique ID of the newly created GCP project"
 }
 
-output "cluster_name" {
-  description = "GKE cluster name"
-  value       = google_container_cluster.this.name
+output "project_number" {
+  value       = google_project.yolo_project.number
+  description = "The project number (used for service account names)"
 }
 
-output "artifact_registry_url" {
-  description = "Docker image registry URL (push target)"
-  # Ensure this uses var.project_id as well
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}"
+output "bucket_name" {
+  value       = google_storage_bucket.assets.name
+  description = "The name of the GCS bucket created for weights and logs"
 }
 
-# The load_balancer_ip output has been removed because 
-# the service is not managed by Terraform right now.
+output "ingress_ip" { 
+  value = kubernetes_ingress_v1.yolo_ingress.status[0].load_balancer[0].ingress[0].ip 
+  description = "The ip address of your GKE Ingress"
+}

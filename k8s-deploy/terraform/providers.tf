@@ -1,6 +1,5 @@
 terraform {
-  required_version = ">= 1.5"
-
+  required_version = ">= 1.0"
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -8,24 +7,23 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.30"
+      version = "~> 2.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.6"
+      version = "~> 3.0"
     }
   }
 }
 
+# The default provider (used to create the project)
 provider "google" {
-  project = var.project_id
   region = var.region
 }
 
-data "google_client_config" "default" {}
-
-provider "kubernetes" {
-  host                   = "https://${google_container_cluster.this.endpoint}"
-  token                  = data.google_client_config.default.access_token
-  cluster_ca_certificate = base64decode(google_container_cluster.this.master_auth[0].cluster_ca_certificate)
+# The project-specific provider (used for resources inside the project)
+provider "google" {
+  alias   = "project_context"
+  project = google_project.yolo_project.project_id
+  region  = var.region
 }

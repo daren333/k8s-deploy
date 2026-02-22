@@ -31,3 +31,15 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "org_id" {
+  type        = string
+  default     = null
+  description = "Optional: Your Google Organization ID"
+}
+
+variable "domain_name" {
+  type        = string
+  default     = "yolo-test.duckdns.org"
+  description = "The domain name for the SSL certificate"
+}
