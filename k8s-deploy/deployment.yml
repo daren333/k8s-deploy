@@ -14,10 +14,29 @@ spec:
       labels:
         app: yolo-fastapi
     spec:
+      # 1. SHARED STORAGE: This lives as long as the pod lives
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      initContainers:
+      - name: weights-downloader
+        image: google/cloud-sdk:slim
+        command: ["gsutil", "cp", "gs://yolo-assets/weights/yolov8n.pt", "/data/yolov8n.pt"]
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
       containers:
       - name: yolo-fastapi-container
         # REMEMBER TO CHANGE THIS TO YOUR ACTUAL ARTIFACT REGISTRY IMAGE URL!
-        image: us-central1-docker.pkg.dev/project-5a33486e-38f2-4a82-b50/yolo-repo/yolo-fastapi:latest
+        image: us-central1-docker.pkg.dev/project-5a33486e-38f2-4a82-b50/yolo-repo/yolo-fastapi@sha256:4928032412c3d3a3cb31a79848d98bdd54be63af1d2b5edb77077cd42c66cfe4
+        env:
+        - name: WEIGHTS_PATH
+          value: "/data/yolov8n.pt"
+        - name: LOG_FILE_PATH
+          value: "/data/predictions.log"
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
         ports:
         - containerPort: 8000
         livenessProbe:
@@ -39,6 +58,21 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "1000m"
+      - name: log-recorder-sidecar
+        image: google/cloud-sdk:slim
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            while true; do
+              # Sync the log file to GCS every 60 seconds
+              if [ -f /data/predictions.log ]; then
+                gsutil cp /data/predictions.log gs://yolo-assets/logs/$(hostname)_$(date +%F).log
+              fi
+              sleep 60
+            done
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -78,9 +112,13 @@ metadata:
   name: yolo-fastapi-ingress
   annotations:
     kubernetes.io/ingress.class: "gce" # Tells GKE to use the default Google Load Balancer
+    networking.gke.io/managed-certificates: "yolo-managed-cert"
+    # Optional: This tells the LB to redirect HTTP traffic to HTTPS automatically
+    kubernetes.io/ingress.allow-http: "true"
 spec:
   rules:
-  - http:
+  - host: yolo-test.duckdns.org
+    http:
       paths:
       - path: /
         pathType: Prefix
@@ -89,3 +127,11 @@ spec:
             name: yolo-fastapi-service
             port:
               number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: yolo-managed-cert
+spec:
+  domains:
+    - yolo-test.duckdns.org # Put your exact DuckDNS domain here

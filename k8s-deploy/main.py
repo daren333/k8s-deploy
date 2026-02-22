@@ -2,12 +2,18 @@
 FastAPI service exposing a lightweight YOLOv8n model for object detection.
 """
 
+import datetime
 import io
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image
 from ultralytics import YOLO
+import os
+
+# Get paths from environment variables (set in deployment.yml)
+weights_path = os.getenv("WEIGHTS_PATH", "yolov8n.pt")
+log_path = os.getenv("LOG_FILE_PATH", "/data/predictions.log")
 
 _model = None
 
@@ -95,7 +101,13 @@ async def predict(
                 "bbox": [round(float(c), 1) for c in box.xyxy[0]],
             }
         )
-
+    
+    # Record the data for the sidecar
+    with open(log_path, "a") as f:
+        for detection in detections:
+            # Save: timestamp, filename, confidence, label, bounding box
+            f.write(f"{datetime.now()}, {file.filename}, {detection.confidence}, {detection.class_name}, {detection.bbox}\n")
+            
     return {
         "num_detections": len(detections),
         "detections": detections,
