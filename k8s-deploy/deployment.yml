@@ -20,8 +20,14 @@ spec:
         emptyDir: {}
       initContainers:
       - name: weights-downloader
-        image: google/cloud-sdk:slim
-        command: ["gsutil", "cp", "gs://yolo-assets/weights/yolov8n.pt", "/data/yolov8n.pt"]
+        image: google/cloud-sdk:latest # Use latest to ensure tools are there
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Starting download..."
+            # Using gcloud storage instead of gsutil for better compatibility
+            gcloud storage cp gs://yolo-assets/weights/yolov8n.pt /data/yolov8n.pt
+            echo "Download complete."
         volumeMounts:
         - name: shared-data
           mountPath: /data
