@@ -145,7 +145,7 @@ resource "kubernetes_deployment" "yolo" {
         container {
           name  = "yolo-fastapi"
           # Points to the new project's registry
-          image = "us-central1-docker.pkg.dev/${google_project.yolo_project.project_id}/yolo-repo/yolo-fastapi:v3"
+          image = "us-central1-docker.pkg.dev/${google_project.yolo_project.project_id}/yolo-repo/yolo-fastapi:v4"
           
           port { container_port = 8000 }
 

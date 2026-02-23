@@ -106,7 +106,7 @@ async def predict(
     with open(log_path, "a") as f:
         for detection in detections:
             # Save: timestamp, filename, confidence, label, bounding box
-            f.write(f"{datetime.now()}, {file.filename}, {detection.confidence}, {detection.class_name}, {detection.bbox}\n")
+            f.write(f"{datetime.now()}, {file.filename}, {detection.get("confidence", 0)}, {detection.get("class_name", "no class name")}, {detection.get("bbox", [])}\n")
             
     return {
         "num_detections": len(detections),
