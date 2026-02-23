@@ -32,7 +32,8 @@ resource "google_container_cluster" "primary" {
 }
 
 resource "google_storage_bucket" "assets" {
-  name          = "yolo-assets"
+  name          = "yolo-assets-${google_project.yolo_project.project_id}"
+  project       = google_project.yolo_project.project_id
   location      = var.region
   force_destroy = true
 }
