@@ -63,7 +63,13 @@ log "Uploading model weights to GCS..."
 gsutil cp ../yolov8n.pt "gs://yolo-assets-$PROJECT_ID/weights/yolov8n.pt"
 
 # --- 4. Phase 3: Final Deploy ---
-log "Phase 3: Deploying GKE Cluster and Application..."
+log "Phase 3a: Deploying GKE Cluster (This takes 10-15 minutes)..."
+terraform apply -var="billing_account=$BILLING_ID" \
+  -target=google_container_cluster.primary \
+  -auto-approve
+
+log "Phase 3b: Deploying Kubernetes Services and App..."
+# Now that the cluster exists, Terraform can connect and apply the manifests
 terraform apply -var="billing_account=$BILLING_ID" -auto-approve
 
 log "Setup Complete!"
