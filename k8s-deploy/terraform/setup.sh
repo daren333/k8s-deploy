@@ -55,7 +55,7 @@ docker build -t yolo-fastapi:v2 -f ../Dockerfile ..
 
 # Tag and Push to the new project's registry
 IMAGE_PATH="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/yolo-fastapi:v2"
-docker tag yolo-fastapi:v2 "$IMAGE_PATH"
+docker tag yolo-fastapi:v3 "$IMAGE_PATH"
 docker push "$IMAGE_PATH"
 
 # Upload Weights to the new bucket

@@ -2,7 +2,7 @@
 FastAPI service exposing a lightweight YOLOv8n model for object detection.
 """
 
-import datetime
+from datetime import datetime
 import io
 from contextlib import asynccontextmanager
 
