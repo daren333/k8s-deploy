@@ -1,23 +1,70 @@
 #!/bin/bash
 set -e
 
-# Start Terraform to create the project and bucket
-terraform apply -var="billing_account=$BILLING_ID" -target=google_project.yolo_project -target=google_storage_bucket.assets -auto-approve
+# --- Helper Function for Logging ---
+log() {
+  echo -e "[$(date +'%T')] $1"
+}
+
+log "Starting YOLO Deployment Setup..."
+
+# --- 1. Check/Prompt for Billing ID ---
+if [ -z "$BILLING_ID" ]; then
+  log "Warning: BILLING_ID environment variable not found."
+  read -p "Please enter your Google Billing Account ID: " BILLING_ID
+  if [ -z "$BILLING_ID" ]; then
+    log "Error: Billing ID is required. Exiting."
+    exit 1
+  fi
+fi
+
+# --- 2. Phase 1: Create Project & Bucket ---
+log "Phase 1: Provisioning Project and Storage..."
+terraform apply -var="billing_account=$BILLING_ID" \
+  -target=google_project.yolo_project \
+  -target=google_storage_bucket.assets \
+  -auto-approve
 
 PROJECT_ID=$(terraform output -raw project_id)
+REGION="us-central1"
+REPO_NAME="yolo-repo"
 
-# Enable Artifact Registry manually (Terraform can be slow here)
+# --- 3. Phase 2: Build Image & Prepare Assets ---
+log "Phase 2: Preparing Registry and Assets..."
 gcloud services enable artifactregistry.googleapis.com --project=$PROJECT_ID
 
-# Create Repo & Push Image
-gcloud artifacts repositories create yolo-repo --repository-format=docker --location=us-central1 --project=$PROJECT_ID
-gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+# Check if Repository Exists
+REPO_EXISTS=$(gcloud artifacts repositories list \
+  --project=$PROJECT_ID --location=$REGION \
+  --filter="name:projects/$PROJECT_ID/locations/$REGION/repositories/$REPO_NAME" \
+  --format="value(name)")
 
-docker tag yolo-fastapi:v2 us-central1-docker.pkg.dev/$PROJECT_ID/yolo-repo/yolo-fastapi:v2
-docker push us-central1-docker.pkg.dev/$PROJECT_ID/yolo-repo/yolo-fastapi:v2
+if [ -z "$REPO_EXISTS" ]; then
+  log "Creating new Artifact Registry repository..."
+  gcloud artifacts repositories create $REPO_NAME \
+    --repository-format=docker --location=$REGION --project=$PROJECT_ID
+else
+  log "Repository '$REPO_NAME' already exists. Skipping creation."
+fi
 
-# Upload Weights
-gsutil cp yolov8n.pt gs://yolo-assets-$PROJECT_ID/weights/yolov8n.pt
+gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
 
-# Run full Terraform to deploy GKE and the App
+# Build the local Docker image
+log "Building and pushing Docker image..."
+docker build -t yolo-fastapi:v2 -f ../Dockerfile ..
+
+# Tag and Push to the new project's registry
+IMAGE_PATH="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/yolo-fastapi:v2"
+docker tag yolo-fastapi:v2 "$IMAGE_PATH"
+docker push "$IMAGE_PATH"
+
+# Upload Weights to the new bucket
+log "Uploading model weights to GCS..."
+gsutil cp ../yolov8n.pt "gs://yolo-assets-$PROJECT_ID/weights/yolov8n.pt"
+
+# --- 4. Phase 3: Final Deploy ---
+log "Phase 3: Deploying GKE Cluster and Application..."
 terraform apply -var="billing_account=$BILLING_ID" -auto-approve
+
+log "Setup Complete!"
+terraform output
