@@ -59,3 +59,19 @@ curl -X POST "http://localhost:8000/predict?confidence=0.5" \
 ```
 
 Bounding boxes are in `[x_min, y_min, x_max, y_max]` pixel coordinates. The model uses **COCO** (80 classes). Weights are downloaded automatically on first run (~6 MB).
+
+## Deploying to GCP (via K8s)
+
+set billing id as env variable
+```bash
+export BILLING_ID=<GCP-billing-id>
+```
+run setup script from terraform directory:
+```bash
+cd terraform && ./setup.sh
+```
+
+To tear down:
+```bash
+./cleanup.sh
+```
