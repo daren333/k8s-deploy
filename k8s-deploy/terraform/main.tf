@@ -9,7 +9,7 @@ resource "google_project" "yolo_project" {
   org_id          = var.org_id
 }
 
-# 2. Enable Required APIs
+# Enable Required APIs
 resource "google_project_service" "apis" {
   for_each = toset([
     "container.googleapis.com",
@@ -23,7 +23,7 @@ resource "google_project_service" "apis" {
   disable_on_destroy = false
 }
 
-# 3. Infrastructure: GKE & Storage
+# Infrastructure: GKE & Storage
 resource "google_container_cluster" "primary" {
   name             = "yolo-repo-cluster"
   location         = var.region
@@ -40,7 +40,7 @@ resource "google_storage_bucket" "assets" {
   uniform_bucket_level_access = true
 }
 
-# 4. Identity Linking (Workload Identity)
+# Identity Linking (Workload Identity)
 resource "google_service_account_iam_member" "workload_identity" {
   service_account_id = "projects/${google_project.yolo_project.project_id}/serviceAccounts/${google_project.yolo_project.number}-compute@developer.gserviceaccount.com"
   role               = "roles/iam.workloadIdentityUser"
@@ -53,7 +53,7 @@ resource "google_storage_bucket_iam_member" "storage_access" {
   member = "serviceAccount:${google_project.yolo_project.project_id}.svc.id.goog[default/default]"
 }
 
-# 5. Kubernetes & TLS Resources
+# Kubernetes & TLS Resources
 provider "kubernetes" {
   host                   = "https://${google_container_cluster.primary.endpoint}"
   token                  = data.google_client_config.default.access_token
@@ -106,7 +106,7 @@ resource "kubernetes_ingress_v1" "yolo_ingress" {
   }
 }
 
-# 6. Deployment & Service
+# Deployment & Service
 resource "kubernetes_deployment" "yolo" {
   metadata {
     name = "yolo-fastapi-deployment"
