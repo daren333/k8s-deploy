@@ -28,6 +28,7 @@ resource "google_container_cluster" "primary" {
   name             = "yolo-repo-cluster"
   location         = var.region
   enable_autopilot = true
+  project          = google_project.yolo_project.project_id
   depends_on       = [google_project_service.apis]
 }
 
@@ -108,6 +109,7 @@ resource "kubernetes_ingress_v1" "yolo_ingress" {
 resource "kubernetes_deployment" "yolo" {
   metadata {
     name = "yolo-fastapi-deployment"
+    namespace = "default"
     labels = { app = "yolo-fastapi" }
   }
   spec {
@@ -180,6 +182,7 @@ resource "kubernetes_deployment" "yolo" {
 resource "kubernetes_service" "yolo" {
   metadata {
     name = "yolo-fastapi-service"
+    namespace = "default"
   }
   spec {
     selector = { app = "yolo-fastapi" }

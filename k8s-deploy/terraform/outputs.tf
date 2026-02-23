@@ -13,7 +13,8 @@ output "bucket_name" {
   description = "The name of the GCS bucket created for weights and logs"
 }
 
-output "ingress_ip" { 
-  value = kubernetes_ingress_v1.yolo_ingress.status[0].load_balancer[0].ingress[0].ip 
-  description = "The ip address of your GKE Ingress"
+output "ingress_ip" {
+  # try() prevents Terraform from crashing if the IP list is currently empty
+  value       = try(kubernetes_ingress_v1.yolo_ingress.status[0].load_balancer[0].ingress[0].ip, "Provisioning in progress... check GCP Console")
+  description = "The public IP of your GKE Ingress (Load Balancer)"
 }
