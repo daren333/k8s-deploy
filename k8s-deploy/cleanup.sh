@@ -1,26 +1,22 @@
 #!/bin/bash
+set -e
 
-echo "🚀 Starting full cleanup of YOLO GKE environment..."
+# --- Helper Function for Logging ---
+log() {
+  echo -e "[$(date +'%T')] $1"
+}
 
-# 1. Delete Kubernetes resources first
-# This ensures the Google Load Balancer (Ingress) is deleted cleanly.
-# If you don't do this, Terraform might hang trying to delete the network.
-echo "🗑️ Deleting Kubernetes manifests..."
-kubectl delete -f deployment.yml
+log "Starting full cleanup of YOLO GKE environment..."
 
-# Wait a moment for the Load Balancer to detach
-echo "⏳ Waiting 60 seconds for Cloud Load Balancer to release..."
-sleep 60
+# Optional: Prompt for Billing ID if it's not in your terraform.tfvars
+if [ -z "$BILLING_ID" ]; then
+  log "Warning: BILLING_ID environment variable not found."
+  read -p "Please enter your Google Billing Account ID to authorize destruction: " BILLING_ID
+  export TF_VAR_billing_account=$BILLING_ID
+fi
 
-# 2. Use Terraform to destroy the infrastructure
-echo "🏗️ Running Terraform Destroy..."
-cd terraform
+log "Running Terraform Destroy..."
+# This will safely tear down the Ingress, the Cluster, the Bucket, the Registry, and finally the Project itself.
 terraform destroy -auto-approve
 
-# 3. Final verification
-echo "🔍 Checking for any lingering disks or IPs..."
-gcloud compute forwarding-rules list
-gcloud compute target-http-proxies list
-gcloud compute static-ips list
-
-echo "✅ Cleanup complete! Your wallet is safe."
+log "Cleanup complete!"
